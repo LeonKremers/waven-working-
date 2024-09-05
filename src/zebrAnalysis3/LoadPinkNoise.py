@@ -26,7 +26,7 @@ import torch
 from scipy.optimize import curve_fit
 from torch.utils.data import DataLoader
 from torch.utils.data import TensorDataset
-from Analysis_Utils import *
+from . Analysis_Utils import *
 
 
 def load_wavelets(pathdir, nx, ny, wavelets_r, wavelets_i, direction=False):
