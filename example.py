@@ -1,15 +1,15 @@
-import zebrAnalysis3
+import zebrAnalysis3.WaveletGenerator as wg
+import zebrAnalysis3.Analysis_Utils as au
+import zebrAnalysis3.LoadPinkNoise as lpn
 import numpy as np
 import gc
 
-path = "path_to_zebra_movie_folder"
-zebrAnalysis.downsample_video_binary(path+'/zebramovie.mp4')
-
-## wavelet transform of the input stimuli movie
-videodata=np.load(path[:-3]+'npy')
-zebrAnalysis.waveletDecomposition(videodata, 0, path)
-zebrAnalysis.waveletDecomposition(videodata, 1, path)
-
+## downsamples and wavelet transforms the stimulus
+wg.downsample_video_binary('/home/sophie/Projects/pachaging/ressources/pink_noise_3_5min.mp4')
+videodata=np.load('/home/sophie/Projects/pachaging/ressources/pink_noise_3_5min._downsampled.npy')
+path='/home/sophie/Projects/pachaging/ressources/'
+wg.waveletDecomposition(videodata, 0, path)
+wg.waveletDecomposition(videodata, 1, path)
 
 ## parameter for the recorded neural datas
 pathdir='/media/sophie/Seagate Basic/video/2screens/10/'
@@ -27,16 +27,12 @@ pathsuite2p=pathdata+'/suite2p'
 downsampling=False
 
 
-##
+## if the neural and stimulis data are acquired with CortexLab system
+spks, neuron_pos=lpn.loadSPKMesoscope(exp_info, dirs, pathsuite2p, block_end, n_planes, nb_frames, first=True,  method='photosensor')
+neuron_pos=lpn.correctNeuronPos(neuron_pos)
 
-spks, neuron_pos=zebrAnalysis.LoadPinkNoise.loadSPKMesoscope(exp_info, dirs, pathsuite2p, block_end, n_planes, nb_frames, first=True,  method='photosensor')
-neuron_pos=zebrAnalysis.LoadPinkNoise.correctNeuronPos(neuron_pos)
-
-
-respcorr_zebra = zebrAnalysis.Analysis_Utils.repetability_trial2(spks, neuron_pos)
-
-wavelets0, wavelets1, wavelet_c = zebrAnalysis.LoadPinkNoise.coarseWavelet(path, downsampling)
-
-
-rfs_zebra =  zebrAnalysis.Analysis_Utils.PearsonCorrelationPinkNoise(wavelet_c.reshape(18000, -1), np.mean(spks[:, :18000], axis=0),
+## the spikes data have to be time registered to the stimulus frames
+respcorr_zebra = au.repetability_trial3(spks, neuron_pos)
+wavelets0, wavelets1, wavelet_c = lpn.coarseWavelet(path, downsampling)
+rfs_zebra =  au.PearsonCorrelationPinkNoise(wavelet_c.reshape(18000, -1), np.mean(spks[:, :18000], axis=0),
                                   neuron_pos, 27, 11, plotting=True)
