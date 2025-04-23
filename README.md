@@ -27,3 +27,8 @@ https://docs.google.com/presentation/d/1nEv07CzCwYUoozucwwqi6qgS_t0jBy7KwqHKKoh2
 
 **Ressources with toy dataset and files**<br />
 https://drive.google.com/drive/folders/1EnxOnuz1PFIERs2nI0OQJS2t4ZI83dtE?usp=sharing<br />
+
+**GUI**<br />
+<p align="center">
+  <img src="https://github.com/skriabineSop/zebranalysis/blob/main/img/image1618.png" title="hover text">
+ </p>
