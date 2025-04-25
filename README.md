@@ -41,7 +41,7 @@ check out example.py
 
 Setting up the parameters**
 
-.. code-block:: python
+```python
 	
 	import zebrAnalysis3.WaveletGenerator as wg
 	import zebrAnalysis3.Analysis_Utils as au
@@ -84,9 +84,11 @@ Setting up the parameters**
 	    "Library Path": "/home/sophie/Documents/POSTDOC/TEMP/gabors_library.npy",
 	    "Spks Path": "None"
 	}
+```
+
 Here is a quick explanation of each parameter:
 
-.. code-block:: python
+```python
 	
 	"""
 	Parameters Gabor Library:
@@ -119,17 +121,21 @@ Here is a quick explanation of each parameter:
 	    Library Path: path to Gabor library (same as save path if ran)
 	    Spks Path (opt): path to the spks.npy file to skip the alignement procedure, if set ignores Parameter alignment
 	"""
+```
 
 2. **To run the UI:**
-.. code-block:: python
+
+```python
 	
 	ui.run(param_defaults,gabor_param)
+```
 
 documentation can be found here <https://docs.google.com/presentation/d/1nEv07CzCwYUoozucwwqi6qgS_t0jBy7KwqHKKoh2f2U/edit?usp=sharing>
 
 3. **To create a new Gabor library**
 
-.. code-block:: python
+
+```python
 
 	if f!=0:
 	    freq=True
@@ -138,12 +144,13 @@ documentation can be found here <https://docs.google.com/presentation/d/1nEv07Cz
 	L = wg.makeFilterLibrary(xs, ys, thetas, sigmas, offsets, f, freq=freq)
 	np.save(path_save, L)
 	lib_path=path_save
+```
 
 An already made Gabor Library well suited for mice can be found here <>
 
 4. **Downsampling and adjusting the range of visual coverage to your analysis:**
 
-.. code-block:: python
+```python
 	
 	if (visual_coverage!=analysis_coverage):
 	    visual_coverage=np.array(visual_coverage)
@@ -161,20 +168,23 @@ An already made Gabor Library well suited for mice can be found here <>
 
 	wg.waveletDecomposition(videodata, 0, sigmas, path, lib_path)
 	wg.waveletDecomposition(videodata, 1, sigmas, path, lib_path)
+```
 
 5. **Loading you neural activity and neuron positions :**
 
-.. code-block:: python
+
+```python
 	
 	spks=np.load(spks_path)
 	parent_dir = os.path.dirname(spks_path)
 	neuron_pos=np.load(os.join(parent_dir, 'pos.npy'))
 	## converts neuron position in microns
 	neuron_pos=lpn.correctNeuronPos(neuron_pos, resolution)
+```
 	
 6. **Running the Analysis:**
 
-.. code-block:: python
+```python
 	
 	## the spikes data have to be time registered to the stimulus frames
 	respcorr_zebra = au.repetability_trial3(spks, neuron_pos, plotting=True)
@@ -190,7 +200,7 @@ An already made Gabor Library well suited for mice can be found here <>
 
 	## plots neuron tuning curves
 	tuning_curve=au.PlotTuningCurve(rfs_zebra, 2441, analysis_coverage, sigmas_deg, screen_ratio)
-	
+```
 
 
 	
