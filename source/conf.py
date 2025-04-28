@@ -61,9 +61,9 @@ html_theme_options = {
     "source_repository": "https://github.com/skriabineSop/zebranalysis/",
     "source_branch": "main",
     "source_directory": "img",
-    "light_logo": "g1730.png",
-    "dark_logo": "g1730.png",
+    "light_logo": "image1630.png",
+    "dark_logo": "image1630.png",
 }
 html_theme = "furo"
 html_title = "ZebrAnalysis"
-html_favicon = "g1730.png"
+html_favicon = "image1630.png"
