@@ -1,5 +1,5 @@
 <div>
-    <img src="https://github.com/skriabineSop/zebranalysis/blob/main/img/g1730.png" width="250" align="right"/>
+    <img src="https://github.com/skriabineSop/zebranalysis/blob/main/img/image1630.png" width="250" align="right"/>
 </div>
 
 **ZebrAnalysis**
