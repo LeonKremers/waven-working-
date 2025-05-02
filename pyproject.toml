@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 
 [project]
-name = "zebrAnalysis9.54"
+name = "zebrAnalysis9.55"
 version = "0.0.1"
 authors = [
   { name="Sophie Skriabine", email="sophie.skriabine@gmail.com" },
@@ -13,8 +13,21 @@ authors = [
 description = "A small example package"
 readme = "README.md"
 requires-python = ">=3.8"
+dependencies = [
+    "matplotlib",
+    "numpy",
+    "opencv_python",
+    "pandas",
+    "scikit_image",
+    "scikit_learn",
+    "scipy",
+    "seaborn",
+    "tifffile",
+    "torch",
+]
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
+
