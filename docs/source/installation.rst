@@ -18,6 +18,6 @@ More info on how to install conda here <https://docs.conda.io/projects/conda/en/
 
 .. code-block:: python
 	
-	python3 -m pip install --index-url https://test.pypi.org/simple/ --no-deps zebrAnalysis9.54
+	python3 -m pip install --index-url https://test.pypi.org/simple/ --no-deps waven0.1
 	
 .

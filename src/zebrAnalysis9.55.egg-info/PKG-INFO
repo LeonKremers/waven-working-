@@ -1,8 +1,31 @@
+Metadata-Version: 2.4
+Name: zebrAnalysis9.55
+Version: 0.0.1
+Summary: A small example package
+Author-email: Sophie Skriabine <sophie.skriabine@gmail.com>
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: matplotlib
+Requires-Dist: numpy
+Requires-Dist: opencv_python
+Requires-Dist: pandas
+Requires-Dist: scikit_image
+Requires-Dist: scikit_learn
+Requires-Dist: scipy
+Requires-Dist: seaborn
+Requires-Dist: tifffile
+Requires-Dist: torch
+Dynamic: license-file
+
 <div>
-    <img src="https://github.com/skriabineSop/waven/blob/main/img/image1630.png" width="250" align="right"/>
+    <img src="https://github.com/skriabineSop/zebranalysis/blob/main/img/image1630.png" width="250" align="right"/>
 </div>
 
-**Waven**
+**ZebrAnalysis**
 
 packages required:
 
@@ -15,14 +38,14 @@ packages required:
 - torch
 
 **General Documenttaion and tutorial**<br />
-can be found here <https://waven.readthedocs.io/en/latest/><br />
+can be found here <https://zebranalysis.readthedocs.io/en/latest/><br />
 
 
 **installation procedure:**<br />
 in conda type :
 
   conda env create -f environment.yml<br />
-  python3 -m pip install --index-url https://test.pypi.org/simple/ --no-deps waven0.1<br />
+  python3 -m pip install --index-url https://test.pypi.org/simple/ --no-deps zebrAnalysis9.54<br />
 
 
 **GUI Documentation:**<br />
@@ -36,7 +59,7 @@ check out example.py
 
 **GUI**<br />
 <p align="center">
-  <img src="https://github.com/skriabineSop/waven/blob/main/img/image1618.png" title="hover text">
+  <img src="https://github.com/skriabineSop/zebranalysis/blob/main/img/image1618.png" title="hover text">
  </p>
 
 
@@ -47,10 +70,10 @@ Setting up the parameters**
 
 ```python
 	
-	import waven.WaveletGenerator as wg
-	import waven.Analysis_Utils as au
-	import waven.LoadPinkNoise as lpn
-	import waven.zebraGUI as ui
+	import zebrAnalysis3.WaveletGenerator as wg
+	import zebrAnalysis3.Analysis_Utils as au
+	import zebrAnalysis3.LoadPinkNoise as lpn
+	import zebrAnalysis3.zebraGUI as ui
 	import numpy as np
 	import gc
 	import os

@@ -17,7 +17,7 @@
 
 # -- Project information -----------------------------------------------------
 
-project = 'ZebrAnalysis'
+project = 'Waven'
 copyright = '2025, Sophie Skriabine'
 author = 'Sophie Skriabine'
 
