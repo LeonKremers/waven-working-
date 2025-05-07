@@ -16,6 +16,7 @@ Table of Contents
 
    quickstart
    installation
+   faq
 
 
 Indices and tables

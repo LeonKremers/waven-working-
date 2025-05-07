@@ -3,7 +3,7 @@
 Quick Start Guide
 =================
 
-This page explains how to use the above code to extract visuak feature preferences from 2p neural datas
+This page explains how to use the above code to extract visual feature preferences from 2p neural datas
 
 Setting up the parameters**
 
