@@ -71,7 +71,7 @@ def makeFilterLibrary2(xs, ys, thetas, sigmas, offsets, frequencies):
                 for s in sigmas:
                     for f in frequencies:
                         for o in offsets:
-                            library.append( makeGaborFilter(x, y, t, s, o, f, lx=lx, ly=ly))
+                            library.append( makeGaborFilter(x, y, t, s, o, f, lx=lx, ly=ly, freq=True))
 
     library=np.array(library)
     return library.reshape((lx, ly, thetas.shape[0], sigmas.shape[0], frequencies.shape[0], offsets.shape[0], -1))

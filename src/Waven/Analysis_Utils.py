@@ -31,7 +31,12 @@ from sklearn.feature_extraction import image
 from sklearn.cluster import KMeans
 import cv2 as cv
 from .LoadPinkNoise import load_stimulus_simple_cell2
-
+import gc
+import matplotlib.gridspec as gridspec
+from sklearn.decomposition import NMF
+from tensorly.decomposition import non_negative_parafac
+import math
+import cv2
 
 
 def Decay(t, tau, t0):
@@ -2043,8 +2048,7 @@ def approx_Matrix2(X, smoothing_factor=0.75, plotting=False):
 
     return X_approx,  (U1, U2, U3)
     
-   
-import matplotlib.gridspec as gridspec
+
 def getPhiRho(spk, w_i, w_r, dphi, w_i_inhib, w_r_inhib, dphi_inhib, ncut=20, plotting=True, sigma=7):
     gc.collect()
     sin = w_i.reshape(-1, 1)
@@ -2824,6 +2828,63 @@ def getHVA(signMap, neuron_pos, thresh=0.3, sign=1):
     markers2_neurons=np.array([markers2[np.maximum(0, int(neuron_pos[i, 1])-1), np.maximum(0, int(neuron_pos[i, 0])-1)] for i in range(neuron_pos.shape[0])])#np.zeros_like(maxes[0, :])
     return markers2, markers2_neurons
 
+def filter_nan_gaussian_conserving2(arr, sigma, mode='reflect'):
+    """Apply a gaussian filter to an array with nans.
+
+    Intensity is only shifted between not-nan pixels and is hence conserved.
+    The intensity redistribution with respect to each single point
+    is done by the weights of available pixels according
+    to a gaussian distribution.
+    All nans in arr, stay nans in gauss.
+    """
+    nan_msk = np.isnan(arr)
+
+    loss = np.zeros(arr.shape)
+    loss[nan_msk] = 1
+    loss = ndimage.gaussian_filter(
+            loss, sigma=sigma, mode=mode, cval=1)
+
+    gauss = arr / (1-loss)
+    gauss[nan_msk] = 0
+    gauss = ndimage.gaussian_filter(
+            gauss, sigma=sigma, mode=mode, cval=0)
+    gauss[nan_msk] = np.nan
+
+    return gauss
+
+def visualSignMap(phasemap1, phasemap2):
+    """
+    calculate visual sign map from two orthogonally oriented phase maps
+    """
+
+    if phasemap1.shape != phasemap2.shape:
+        raise LookupError("'phasemap1' and 'phasemap2' should have same size.")
+
+    gradmap1 = np.gradient(phasemap1)
+    gradmap2 = np.gradient(phasemap2)
+
+    # gradmap1 = ni.filters.median_filter(gradmap1,100.)
+    # gradmap2 = ni.filters.median_filter(gradmap2,100.)
+
+    graddir1 = np.zeros(np.shape(gradmap1[0]))
+    # gradmag1 = np.zeros(np.shape(gradmap1[0]))
+
+    graddir2 = np.zeros(np.shape(gradmap2[0]))
+    # gradmag2 = np.zeros(np.shape(gradmap2[0]))
+
+    for i in range(phasemap1.shape[0]):
+        for j in range(phasemap2.shape[1]):
+            graddir1[i, j] = math.atan2(gradmap1[1][i, j], gradmap1[0][i, j])
+            graddir2[i, j] = math.atan2(gradmap2[1][i, j], gradmap2[0][i, j])
+
+            # gradmag1[i,j] = np.sqrt((gradmap1[1][i,j]**2)+(gradmap1[0][i,j]**2))
+            # gradmag2[i,j] = np.sqrt((gradmap2[1][i,j]**2)+(gradmap2[0][i,j]**2))
+
+    vdiff = np.multiply(np.exp(1j * graddir1), np.exp(-1j * graddir2))
+
+    areamap = np.sin(np.angle(vdiff))
+
+    return areamap
 
 def getSignMap(neuron_pos, maxes, plotting=False):
     import scipy as sp
@@ -2951,6 +3012,14 @@ def TwoDimColorMap(X, Y, plotting=False):
 
 
 
+def rescale_to_minus_a_plus_a(arr, a=1.0):
+    arr_min, arr_max = arr.min(), arr.max()
+    if arr_max == arr_min:
+        return np.zeros_like(arr)  # éviter division par zéro
+    arr_scaled = 2 * a * (arr - arr_min) / (arr_max - arr_min) - a
+    return arr_scaled
+
+
 def run_Model(maxes0, maxes1, spks, wavelets_i, wavelets_r, dt1=9000, n_min=5, double_wavelet_model=True, train_idx=[0, 2], test_idx=[1, 3], plotting=False):
     Predictions=[]
     nonlinParams=[]
@@ -3060,9 +3129,9 @@ def run_Model(maxes0, maxes1, spks, wavelets_i, wavelets_r, dt1=9000, n_min=5, d
     Metrics = np.array(M)
     return Predictions, nonlinParams,RhoPhiParams,Metrics
 
-def run_Full_Model( maxes1, maxes0, spks,idxs,thetas,sigmas, frequencies,visual_coverage, neuron_pos, 
-                    wavelet_path='/media/sophie/Expansion1/UCL/utils/2screens/10/', 
-                    savepath = '/home/sophie/Pictures/img zebra/supp/supp/', n_min=5, tt=[10, 18000], 
+def run_Full_Model( maxes1, maxes0, spks,idxs,thetas,sigmas, frequencies,visual_coverage, neuron_pos,
+                    wavelet_path='/media/sophie/Expansion1/UCL/utils/2screens/10/',
+                    savepath = '/home/sophie/Pictures/img zebra/supp/supp/', n_min=5, tt=[10, 18000],
                     memmapping=True, train_idx=[0, 2],test_idx=[1, 3],double_wavelet_model=False, lastmin=False,
                     plotting=False ):
     Predictions = []
@@ -3289,7 +3358,7 @@ def run_Full_Model( maxes1, maxes0, spks,idxs,thetas,sigmas, frequencies,visual_
                                                                                               double_wavelet_model=double_wavelet_model,
                                                                                               lastmin=lastmin,
                                                                                               func=relu, sigma=15,
-                                                                                              plotting=plotting)
+                                                                                              plotting=False)
 
         if plotting:
             ncut = 20
@@ -3385,12 +3454,16 @@ def run_Full_Model( maxes1, maxes0, spks,idxs,thetas,sigmas, frequencies,visual_
 
     M = [[m[0], m[1], m[2][0][1], m[3], m[4]] for m in Metrics]
 
-    np.save(pathdata + '/model_results/RPdp_predictions_8_noneigh_c_smoothpos_' + str(n_min) + '.npy', Predictions)
-    np.save(pathdata + '/model_results/RPdp_nonlinparams_8_noneigh_c_smoothpos_' + str(n_min) + '.npy', nonlinParams)
-    np.save(pathdata + '/model_results/RPdp_rhophiparams_8_noneigh_c_smoothpos_' + str(n_min) + '.npy', RhoPhiParams)
-    np.save(pathdata + '/model_results/RPdp_metrics_8_noneigh_c_smoothpos_' + str(n_min) + '.npy', M)
-    np.save(pathdata + '/model_results/RPdp_os_8_noneigh_c_smoothpos_' + str(n_min) + '.npy', OS)
-    np.save(pathdata + '/model_results/RPdp_params_8_noneigh_c_smoothpos_' + str(n_min) + '.npy', np.array(Params))
+    folder_name = 'model_results'
+    full_path = os.path.join(savepath, folder_name)
+    os.makedirs(full_path, exist_ok=True)
+
+    np.save(os.path.join(full_path , 'RPdp_predictions_8_noneigh_c_smoothpos_' + str(n_min) + '.npy'), Predictions)
+    np.save(os.path.join(full_path , 'RPdp_nonlinparams_8_noneigh_c_smoothpos_' + str(n_min) + '.npy'), nonlinParams)
+    np.save(os.path.join(full_path ,  'RPdp_rhophiparams_8_noneigh_c_smoothpos_' + str(n_min) + '.npy'), RhoPhiParams)
+    np.save(os.path.join(full_path ,  'RPdp_metrics_8_noneigh_c_smoothpos_' + str(n_min) + '.npy'), M)
+    np.save(os.path.join(full_path ,  'RPdp_os_8_noneigh_c_smoothpos_' + str(n_min) + '.npy'), OS)
+    np.save(os.path.join(full_path , 'RPdp_params_8_noneigh_c_smoothpos_' + str(n_min) + '.npy'), np.array(Params))
 
     return Predictions, Params, nonlinParams, RhoPhiParams, Metrics, OS
 

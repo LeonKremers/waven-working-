@@ -103,8 +103,6 @@ n_planes = int(param_defaults["Number of Planes"])
 block_end = int(param_defaults["Block End"])
 screen_x = int(param_defaults["screen_x"])
 screen_y = int(param_defaults["screen_y"])
-nx = int(param_defaults["NX"])
-ny = int(param_defaults["NY"])
 ns = len(sigmas)
 resolution=float(param_defaults["Resolution"])
 spks_path = param_defaults["Spks Path"]
@@ -137,10 +135,12 @@ ui.run(param_defaults,gabor_param)
 
 ## create a new gabor library
 if f!=0:
-    freq=True
+    freq=True # frquencies and size will be decoupled
+    L = wg.makeFilterLibrary2(xs, ys, thetas, sigmas, offsets, f)
 else:
-    freq=False
-L = wg.makeFilterLibrary(xs, ys, thetas, sigmas, offsets, f, freq=freq)
+    freq=False # frquencies and size will be linearly related
+    L = wg.makeFilterLibrary(xs, ys, thetas, sigmas, offsets, f, freq=freq)
+
 np.save(path_save, L)
 lib_path=path_save
 
@@ -218,7 +218,12 @@ tuning_curve=au.PlotTuningCurve(rfs_zebra, 2441, analysis_coverage, sigmas_deg, 
 Predictions, Params, nonlinParams,RhoPhiParams,Metrics, OS=run_Model(rfs, np.array(maxes1), np.array(maxes0), spks, wavelets1, wavelet0, double_wavelet_model=False)
 
 # high granularity version (full model, slower)
-
+# if low RAM, set memmaping=True, if RAM >=120 GB you can set memmmapping=False, il will be faster
+results=run_Full_Model( maxes1, maxes0, spks,idxs,thetas,sigmas, frequencies,visual_coverage, neuron_pos,
+                    wavelet_path='/media/sophie/Expansion1/UCL/utils/2screens/10/',
+                    savepath = '/home/sophie/Pictures/img zebra/supp/supp/', n_min=5, tt=[10, 18000],
+                    memmapping=True, train_idx=[0, 2],test_idx=[1, 3],double_wavelet_model=False, lastmin=False,
+                    plotting=False )
 
 
 
