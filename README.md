@@ -33,8 +33,6 @@ in conda type :
 **GUI Documentation:**<br />
 https://docs.google.com/presentation/d/1nEv07CzCwYUoozucwwqi6qgS_t0jBy7KwqHKKoh2f2U/edit?usp=sharing<br />
 
-**Ressources with toy dataset and files**<br />
-https://drive.google.com/drive/folders/1EnxOnuz1PFIERs2nI0OQJS2t4ZI83dtE?usp=sharing<br />
 
 **Example script**<br />
 check out example.py
