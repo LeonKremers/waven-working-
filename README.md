@@ -12,6 +12,10 @@ This project provides a Python package designed to analyze neuronal responses in
 can be found here <https://waven.readthedocs.io/en/latest/><br />
 
 
+**Stimulus Generation package**<br />
+check out <https://github.com/mwshinn/zebra_noise><br />
+
+
 packages required:
 
 - python 3.8
