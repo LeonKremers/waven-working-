@@ -212,5 +212,4 @@ dependencies:
       - torch==2.5.1+cu118
       - torchaudio==2.5.1+cu118
       - torchvision==0.20.1+cu118
-      - zebranalysis9-37==0.0.1
 prefix: /home/sophie/anaconda3/envs/clonesuite2p
