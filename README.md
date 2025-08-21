@@ -8,10 +8,15 @@
 
 This project provides a Python package designed to analyze neuronal responses in the visual cortex to visual stimuli. Using a Gabor transform of the stimulus, the package enables users to extract tuning curves for key visual features such as azimuth, elevation, orientation, spatial frequency, phase, size, and drift speed.<br />
 
-**General Documenttaion and tutorial**<br />
+**General Documentation and tutorial**<br />
 can be found here <https://waven.readthedocs.io/en/latest/><br />
 
 
+**Stimulus Generation package**<br />
+check out <https://github.com/mwshinn/zebra_noise><br />
+
+
+**Waven Analysis package**<br />
 packages required:
 
 - python 3.8
@@ -27,14 +32,12 @@ packages required:
 in conda type :
 
   conda env create -f environment.yml<br />
-  python3 -m pip install --index-url https://test.pypi.org/simple/ --no-deps waven0.1<br />
+  python3 -m pip install --index-url https://test.pypi.org/simple/ --no-deps waven<br />
 
 
 **GUI Documentation:**<br />
 https://docs.google.com/presentation/d/1nEv07CzCwYUoozucwwqi6qgS_t0jBy7KwqHKKoh2f2U/edit?usp=sharing<br />
 
-**Ressources with toy dataset and files**<br />
-https://drive.google.com/drive/folders/1EnxOnuz1PFIERs2nI0OQJS2t4ZI83dtE?usp=sharing<br />
 
 **Example script**<br />
 check out example.py
