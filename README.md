@@ -56,10 +56,10 @@ Setting up the parameters**
 
 ```python
 	
-	import waven.WaveletGenerator as wg
-	import waven.Analysis_Utils as au
-	import waven.LoadPinkNoise as lpn
-	import waven.zebraGUI as ui
+	import Waven.WaveletGenerator as wg
+	import Waven.Analysis_Utils as au
+	import Waven.LoadPinkNoise as lpn
+	import Waven.zebraGUI as ui
 	import numpy as np
 	import gc
 	import os
