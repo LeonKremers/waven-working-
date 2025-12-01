@@ -4,6 +4,7 @@
 
 **Waven**
 
+This is / will be an actually working version of waven. Will work on different PCs and also headless on Linux servers. 
 
 
 This project provides a Python package designed to analyze neuronal responses in the visual cortex to visual stimuli. Using a Gabor transform of the stimulus, the package enables users to extract tuning curves for key visual features such as azimuth, elevation, orientation, spatial frequency, phase, size, and drift speed.<br />
