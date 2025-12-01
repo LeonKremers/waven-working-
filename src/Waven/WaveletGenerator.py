@@ -12,6 +12,7 @@ from skimage import transform
 import os
 import matplotlib
 #matplotlib.use('TkAgg')
+matplotlib.use('Agg')  # Use Agg backend for headless/non-GUI environments
 from skimage.measure import block_reduce
 import cv2
 import gc
