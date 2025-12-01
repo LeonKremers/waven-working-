@@ -12,7 +12,7 @@ from .suite2p.utils import utils as utils
 from skimage import transform
 
 import matplotlib
-matplotlib.use('TkAgg')
+matplotlib.use('Agg')  # Use Agg backend for headless/non-GUI environments
 
 import os
 import gc

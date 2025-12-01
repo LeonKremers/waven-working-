@@ -11,7 +11,8 @@ import os
 from skimage import transform
 import pickle
 import matplotlib
-matplotlib.use('TkAgg')
+#matplotlib.use('TkAgg')
+matplotlib.use('Agg')  # Use Agg backend for headless/non-GUI environments
 from scipy.stats import pearsonr
 import torch
 from scipy import signal

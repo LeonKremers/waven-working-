@@ -11,7 +11,7 @@ import skimage
 from skimage import transform
 import os
 import matplotlib
-matplotlib.use('TkAgg')
+#matplotlib.use('TkAgg')
 from skimage.measure import block_reduce
 import cv2
 import gc
