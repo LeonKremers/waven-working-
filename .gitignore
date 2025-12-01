@@ -1,0 +1,5 @@
+#temp files
+temp/
+
+#python cache
+__pycache__/
