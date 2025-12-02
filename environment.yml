@@ -86,4 +86,5 @@ dependencies:
       - torchaudio==2.5.1
       - torchvision==0.20.1
       - tensorly==0.9.0
+      - tqdm==4.67.1
 prefix: /home/leonk/anaconda3/envs/zebra-noise

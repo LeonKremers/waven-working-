@@ -16,6 +16,7 @@ matplotlib.use('Agg')  # Use Agg backend for headless/non-GUI environments
 
 import os
 import gc
+from tqdm import tqdm
 
 from torch.utils.data import DataLoader
 from torch.utils.data import TensorDataset
@@ -511,6 +512,237 @@ def align_datas(exp_info, dirs,spks, Nb_frames, nb_plane=1, plane=-1, w=0.0, thr
     return resps_all,resps_all_raw
 
 
+def align_datas_with_timestamps(spks, imaging_timestamps, stimulus_timestamps, Nb_frames, 
+                                 w=0.0, exptype='zebra', plotting=False):
+    """
+    Align neural data to stimulus using pre-computed timestamps.
+    
+    This is a simplified version of align_datas that bypasses Timeline loading
+    and works directly with timestamp arrays.
+    
+    Parameters
+    ----------
+    spks : numpy.ndarray
+        Neural activity data with shape (n_neurons, n_timepoints).
+        Can be fluorescence or deconvolved spike data.
+    
+    imaging_timestamps : numpy.ndarray
+        Timestamps for each frame in the imaging data with shape (n_timepoints,).
+        Must match the second dimension of spks.
+    
+    stimulus_timestamps : numpy.ndarray
+        Timestamps marking when each stimulus frame was displayed.
+        Should have shape (n_total_stimulus_frames,) where 
+        n_total_stimulus_frames = n_trials * Nb_frames.
+        Note: These are the actual stimulus frame times (e.g., at 60 Hz),
+        which will be used to interpolate the imaging data (e.g., at 30 Hz).
+    
+    Nb_frames : int
+        Number of stimulus frames per trial (e.g., 9000).
+        This refers to stimulus frames, not imaging frames.
+    
+    w : float, optional
+        Window parameter for event interpolation. Default is 0.0.
+    
+    exptype : str, optional
+        Experiment type. Options: 'zebra', 'sparse', 'gratings'. 
+        Default is 'zebra'.
+        - 'zebra'/'sparse': Uses single-frame windows with z-scoring
+        - 'gratings': Uses 2-second windows and max pooling
+    
+    plotting : bool, optional
+        If True, plots neural activity traces for visualization. Default is False.
+    
+    Returns
+    -------
+    resps_all : list
+        List of trial-aligned responses. Each element is [array(Nb_frames, n_neurons, 1)]
+        containing z-scored neural responses aligned to stimulus frames for that trial.
+    
+    resps_all_raw : list
+        List of arrays with shape (n_neurons, n_frames_in_trial) containing
+        raw z-scored responses for each trial.
+    
+    Examples
+    --------
+    >>> # Load your neural data and timestamps
+    >>> spks = np.load('spks.npy')  # shape: (n_neurons, n_timepoints)
+    >>> imaging_ts = np.load('imaging_timestamps.npy')  # shape: (n_timepoints,) at 30 Hz
+    >>> stimulus_ts = np.load('stimulus_timestamps.npy')  # shape: (n_trials * 9000,) at 60 Hz
+    >>> 
+    >>> # Align data - Nb_frames refers to stimulus frames per trial
+    >>> resps_all, resps_raw = align_datas_with_timestamps(
+    ...     spks, imaging_ts, stimulus_ts, Nb_frames=9000, exptype='zebra'
+    ... )
+    
+    Notes
+    -----
+    - Automatically determines number of trials from stimulus_timestamps length
+    - Handles different frame rates (e.g., 60 Hz stimulus, 30 Hz imaging)
+    - Uses time-based alignment, not frame matching
+    - Handles incomplete final trials gracefully
+    - For 'zebra' and 'sparse' experiments, applies z-scoring and baseline subtraction
+    - For 'gratings' experiments, uses windowed responses with max pooling
+    """
+    
+    # Validate inputs
+    if spks.shape[1] != len(imaging_timestamps):
+        raise ValueError(
+            f"Mismatch: spks has {spks.shape[1]} timepoints but "
+            f"imaging_timestamps has {len(imaging_timestamps)} timestamps"
+        )
+    
+    # Calculate number of trials based on stimulus frames
+    n_trials = len(stimulus_timestamps) // Nb_frames
+    print(f"Found {n_trials} complete trials ({len(stimulus_timestamps)} stimulus frames, "
+          f"{len(imaging_timestamps)} imaging frames)")
+    
+    # Process each trial
+    trials = []
+    time_trials = []
+    
+    for t in range(n_trials):
+        print(f'Processing trial {t+1}')
+        
+        # Get stimulus time boundaries for this trial
+        start_stim_time = stimulus_timestamps[Nb_frames * t]
+        
+        # Handle last trial or incomplete trials
+        if t < n_trials - 1:
+            end_stim_time = stimulus_timestamps[Nb_frames * (t + 1)]
+        else:
+            # For the last trial, check if there are more stimulus frames
+            end_idx = min(Nb_frames * (t + 1), len(stimulus_timestamps) - 1)
+            end_stim_time = stimulus_timestamps[end_idx]
+        
+        # Find imaging frames within this trial's time window
+        trial_mask = np.logical_and(
+            imaging_timestamps >= start_stim_time,
+            imaging_timestamps < end_stim_time
+        )
+        time_trial = imaging_timestamps[trial_mask]
+        
+        trials.append(trial_mask)
+        time_trials.append(time_trial)
+        
+        print(f"  Trial {t+1}: {np.sum(trial_mask)} imaging frames, "
+              f"{len(time_trial)} timepoints")
+    
+    # Check if there's an incomplete final trial
+    if len(stimulus_timestamps) % Nb_frames != 0:
+        print('Detected incomplete final trial')
+        remaining_frames = len(stimulus_timestamps) % Nb_frames
+        
+        start_stim_time = stimulus_timestamps[Nb_frames * n_trials]
+        end_stim_time = stimulus_timestamps[-1]
+        
+        trial_mask = np.logical_and(
+            imaging_timestamps >= start_stim_time,
+            imaging_timestamps < end_stim_time
+        )
+        time_trial = imaging_timestamps[trial_mask]
+        
+        if len(time_trial) > 0:
+            trials.append(trial_mask)
+            time_trials.append(time_trial)
+            print(f"  Incomplete trial: {remaining_frames} stimulus frames, "
+                  f"{np.sum(trial_mask)} imaging frames")
+    
+    # Align responses for each trial
+    window = [w]
+    resps_all = []
+    resps_all_raw = []
+    
+    if plotting:
+        plt.figure()
+        plt.title('Neural activity traces (example neuron 200)')
+    
+    for i, trial in enumerate(trials):
+        print(f'Aligning trial {i+1}: {spks.shape}, max index: {np.max(np.asarray(trial != 0).nonzero()[0])}')
+        
+        if exptype == 'zebra' or exptype == 'sparse':
+            try:
+                # Extract and z-score neural data for this trial
+                spks_rt = utils.zscore(spks[:, np.asarray(trial != 0).nonzero()[0]], ax=1, epsilon=1e-5)
+                spks_rt = np.array([spks_rt[:, j] - np.min(spks_rt, axis=1) for j in range(spks_rt.shape[1])]).T
+                
+                if plotting:
+                    plt.plot(spks_rt[200, :], label=f'Trial {i+1}')
+                
+                print(f"  {np.sum(trial)} frames, {len(time_trials[i])} timepoints, spks shape: {spks_rt.shape}")
+                
+                # Prepare output array
+                temp = np.zeros((Nb_frames, spks.shape[0], 1))
+                
+                # Interpolate responses to stimulus times
+                stim_times_trial = stimulus_timestamps[Nb_frames * i:min(Nb_frames * (i + 1), len(stimulus_timestamps))]
+                temp1 = utils.interp_event_responses(
+                    time_trials[i], spks_rt,
+                    events=stim_times_trial,
+                    window=window, 
+                    mean_over_window=False, 
+                    print_interval=None
+                )
+                
+            except Exception as e:
+                print(f'Warning: Error processing trial {i+1}: {e}')
+                print(f'  spks shape: {spks.shape}, max trial index: {np.max(np.asarray(trial != 0).nonzero()[0])}')
+                
+                # Pad spks if needed
+                spks_t = np.zeros((spks.shape[0], 1 + np.max(np.asarray(trial != 0).nonzero()[0])))
+                spks_t[:, :spks.shape[1]] = spks
+                spks_rt = utils.zscore(spks_t[:, np.asarray(trial != 0).nonzero()[0]], ax=1, epsilon=1e-5)
+                spks_rt = np.array([spks_rt[:, j] - np.min(spks_rt, axis=1) for j in range(spks_rt.shape[1])]).T
+                
+                if plotting:
+                    plt.plot(spks_rt[200, :], label=f'Trial {i+1}')
+                
+                temp = np.zeros((Nb_frames, spks.shape[0], 1))
+                stim_times_trial = stimulus_timestamps[Nb_frames * i:min(Nb_frames * (i + 1), len(stimulus_timestamps))]
+                temp1 = utils.interp_event_responses(
+                    time_trials[i], spks_rt,
+                    events=stim_times_trial,
+                    window=window, 
+                    mean_over_window=False, 
+                    print_interval=None
+                )
+        
+        elif exptype == 'gratings':
+            # For gratings, use 2-second windows
+            window = (0, 2)
+            window_ts = np.arange(window[0], window[1], 0.033)
+            
+            # Scale by standard deviation instead of z-scoring
+            spks_rt = utils.scale_std(spks[:, np.asarray(trial != 0).nonzero()[0]])
+            
+            stim_times_trial = stimulus_timestamps[Nb_frames * i:min(Nb_frames * (i + 1), len(stimulus_timestamps))]
+            resps = utils.interp_event_responses(
+                time_trials[i], spks_rt, 
+                events=stim_times_trial,
+                window=window_ts,
+                mean_over_window=False, 
+                print_interval=None
+            )
+            
+            print(f"  Gratings response shape: {resps.shape}")
+            temp1 = np.moveaxis(resps, 2, 1).reshape(-1, resps.shape[1], 1)
+            temp = np.zeros((int(temp1.shape[0]), spks.shape[0], 1))
+        
+        # Store results
+        temp[:temp1.shape[0]] = temp1
+        resps_all.append([temp])
+        resps_all_raw.append(spks_rt)
+    
+    if plotting:
+        plt.legend()
+        plt.xlabel('Time (frames)')
+        plt.ylabel('Neural activity (z-scored)')
+        plt.show()
+    
+    print(f"Alignment complete: {len(resps_all)} trials processed")
+    return resps_all, resps_all_raw
+
+
 def loadFluoMesoscope(exp_info, dirs, path, block_end, Nb_plane=3, Nb_frames=9000, first=False, last=True,
                      threshold=1.25, plane=-1, method='frame2ttl', exptype='zebra'):
     if first:
@@ -756,8 +988,17 @@ def loadSPKMesoscope(exp_info, dirs, path, block_end, Nb_plane=3, Nb_frames=9000
     print('shape spks : ', spks.shape)
     print('neuron_pos spks : ', neuron_pos.shape)
 
-
-    resps_all, resps_all2 = align_datas(exp_info, dirs, spks, Nb_frames,nb_plane=Nb_plane, threshold=threshold, plane=plane, w=w, methods=method, exptype=exptype, plotting=plotting)
+    #get timestamps
+    imaging_timestamps = np.load(path + '/2p_timestamps.npy')
+    stimulus_timestamps = np.load(path + '/stim_timestamps.npy')
+    #resps_all, resps_all2 = align_datas(exp_info, dirs, spks, Nb_frames,nb_plane=Nb_plane, threshold=threshold, plane=plane, w=w, methods=method, exptype=exptype, plotting=plotting)
+    resps_all, resps_all2 = align_datas_with_timestamps(spks, 
+                                                        imaging_timestamps, 
+                                                        stimulus_timestamps, 
+                                                        Nb_frames, 
+                                                        w=0.0, 
+                                                        exptype='zebra', 
+                                                        plotting=False)
     print('data aligned')
     resps_all = np.array(resps_all)
     resps_all = np.nan_to_num(resps_all)
@@ -1083,15 +1324,11 @@ def coarseWavelet(path, downsampling, nx0=135, ny0=54, nx=27, ny=11,no=8,ns=6, n
         R=[]
         C=[]
 
-        for i in range(nb_chunks):
-            print(i)
+        for i in tqdm(range(nb_chunks), desc="Downsampling wavelets"):
             w_r=wavelets_r[i * chunk_size:(i + 1) * chunk_size]
             w_i=wavelets_i[i * chunk_size:(i + 1) * chunk_size]
             wavelets_complex = (np.power(w_r, 2)
                                 + np.power(w_i, 2))
-            print(w_r.shape)
-            print(w_i.shape)
-            print(wavelets_complex.shape)
             w_r_downsampled = skimage.transform.resize(w_r.reshape((-1, nx0, ny0,no, ns)),
                                                        (w_r.shape[0], nx, ny, no, ns, nf), anti_aliasing=True)
             w_i_downsampled = skimage.transform.resize(w_i.reshape((-1, nx0, ny0, no, ns)),

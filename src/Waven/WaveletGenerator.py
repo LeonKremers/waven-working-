@@ -17,6 +17,7 @@ from skimage.measure import block_reduce
 import cv2
 import gc
 import torch
+from tqdm import tqdm
 
 from skimage.filters import gabor_kernel
 
@@ -158,8 +159,7 @@ def getTrueRF(idx, rfs, L):
 def getWTfromNPY(videodata, waveletLibrary, phase):
     WT = []
     l = torch.Tensor(waveletLibrary).cuda()
-    for i, frame in enumerate(videodata):
-        print(i)
+    for i, frame in tqdm(enumerate(videodata), total=len(videodata), desc=f"Wavelet transform (phase={phase})"):
         wt = waveletTransform(frame, phase, l)
         torch.cuda.empty_cache()
         WT.append(wt)
