@@ -97,8 +97,7 @@ def makeFilterLibrary(xs, ys, thetas, sigmas, offsets, f, freq=True):
     library=[]
     lx=xs.shape[0]
     ly=ys.shape[0]
-    for x in xs:
-        print(x)
+    for x in tqdm(xs):
         for y in ys:
             for t in thetas:
                 for s in sigmas:
@@ -216,63 +215,74 @@ def downsample_video_binary(path, visual_coverage, analysis_coverage, shape=(54,
     r=0
     f = 0
     ratio_x, ratio_y=ratios
-    print(ratio_x, ratio_y)
+    print(f"Processing video with ratios: {ratio_x}, {ratio_y}")
+    
+    # Convert to numpy arrays for element-wise operations
+    visual_coverage = np.array(visual_coverage)
+    analysis_coverage = np.array(analysis_coverage)
+    
     while ret:
         frames = []
-        print(r) 
+        print(f"Processing chunk {r}") 
         ret1=ret
         i = 0
         while ret1:
-            # print(f)
             ret, img = cap.read()  # read one frame from the 'capture' object; img is (H, W, C)
-            # print('while ret1')
             if ret:
                 if f<(r+1)*chunk_size:
                     if f >= r * chunk_size:
                         frames.append(img)
                         i=i+1
                         f = f + 1
-                        # print('add framw', f)
                 if f>=(r+1)*chunk_size:
                     ret1=False
-                    print('false', f, i)
-                    print(len(frames))
-                
-                
+                    print(f'Chunk full: frame {f}, count {i}')
+                    print(f'Frames collected: {len(frames)}')
             else:
-                print(f, i, ret)
+                print(f'Video ended at frame {f}, count {i}, ret={ret}')
                 ret1=ret
+        
+        if len(frames) == 0:
+            print('No more frames to process')
+            break
+            
         try:
             video = np.stack(frames, axis=0)  # dimensions (T, H, W, C)
-            print(video.shape)
+            print(f'Video chunk shape: {video.shape}')
             video = video[:, :, :, 0]
             video_bin = video > 100
-            nb_chunks=int(video.shape[0]/chunk_size)
             del frames, video
             gc.collect()
-            # frames = []
-            # for i in range(nb_chunks):
-            #     print(i)
-            print(video_bin.shape)
-            xi=int((visual_coverage-analysis_coverage)[2])
-            xe=int(ratio_y*video_bin.shape[1])
-            yi=int((visual_coverage-analysis_coverage)[0])
-            ye=int(ratio_x*video_bin.shape[2])
-            print(xi, xe, yi, ye)
-            video_bin=video_bin[:,xi:xe,yi:ye]
-            video_bin = skimage.transform.resize(video_bin, (chunk_size, shape[0], shape[1]))  # 137
+            
+            print(f'Binary video shape: {video_bin.shape}')
+            
+            # Calculate crop indices correctly
+            xi = int((visual_coverage[2] - analysis_coverage[2]) * video_bin.shape[1] / (visual_coverage[2] - visual_coverage[3]))
+            xe = int(xi + ratio_y * video_bin.shape[1])
+            yi = int((visual_coverage[0] - analysis_coverage[0]) * video_bin.shape[2] / (visual_coverage[0] - visual_coverage[1]))
+            ye = int(yi + ratio_x * video_bin.shape[2])
+            
+            print(f'Crop indices - xi:{xi}, xe:{xe}, yi:{yi}, ye:{ye}')
+            
+            video_bin = video_bin[:, xi:xe, yi:ye]
+            video_bin = skimage.transform.resize(video_bin, (video_bin.shape[0], shape[0], shape[1]))
             video_binary = video_bin >= 0.5
-            F.append(video_bin)
+            F.append(video_binary)
             del video_bin
             gc.collect()
-            video_downsampled = np.concatenate(F, axis=0)
-            # F.append(video_downsampled.astype('bool'))
-            r=r+1
-        except:
-            print('end of file')
-    F=np.array(F)
-    print(F.shape)
-    np.save(path[:-4]+'_downsampled.npy', video_downsampled.astype('bool'))
+            r = r + 1
+        except Exception as e:
+            print(f'Error processing chunk: {e}')
+            break
+    
+    if len(F) > 0:
+        video_downsampled = np.concatenate(F, axis=0)
+        print(f'Final downsampled video shape: {video_downsampled.shape}')
+        np.save(path[:-4]+'_downsampled.npy', video_downsampled.astype('bool'))
+        print(f'Saved downsampled video to {path[:-4]}_downsampled.npy')
+    else:
+        print('ERROR: No frames were processed successfully')
+        raise ValueError('Video processing failed - no frames were downsampled')
 
 
 def downsample_video_uint(path, shape=(54, 135), chunk_size=1000):

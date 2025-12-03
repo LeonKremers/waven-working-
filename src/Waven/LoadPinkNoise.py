@@ -889,7 +889,7 @@ def loadFluoMesoscope(exp_info, dirs, path, block_end, Nb_plane=3, Nb_frames=900
     return resps_all, resps_all2, neuron_pos
 
 
-def loadSPKMesoscope(exp_info, dirs, path, block_end, Nb_plane=3, Nb_frames=9000, first=False, last=True,  threshold=1.25,plane=-1,  method='frame2ttl', exptype='zebra', w=0, plotting=False):
+def loadSPKMesoscope(dir, path, block_end, Nb_plane=3, Nb_frames=9000, first=False, last=True,  threshold=1.25,plane=-1,  method='frame2ttl', exptype='zebra', w=0, plotting=False):
     if first:
         print('first session')
         if Nb_plane != 1:
@@ -989,8 +989,8 @@ def loadSPKMesoscope(exp_info, dirs, path, block_end, Nb_plane=3, Nb_frames=9000
     print('neuron_pos spks : ', neuron_pos.shape)
 
     #get timestamps
-    imaging_timestamps = np.load(path + '/2p_timestamps.npy')
-    stimulus_timestamps = np.load(path + '/stim_timestamps.npy')
+    imaging_timestamps = np.load(dir + '/zebra/2p_timestamps.npy')
+    stimulus_timestamps = np.load(dir + '/zebra/stim_timestamps.npy')
     #resps_all, resps_all2 = align_datas(exp_info, dirs, spks, Nb_frames,nb_plane=Nb_plane, threshold=threshold, plane=plane, w=w, methods=method, exptype=exptype, plotting=plotting)
     resps_all, resps_all2 = align_datas_with_timestamps(spks, 
                                                         imaging_timestamps, 
