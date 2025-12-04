@@ -155,9 +155,9 @@ def getTrueRF(idx, rfs, L):
 
 
 
-def getWTfromNPY(videodata, waveletLibrary, phase):
+def getWTfromNPY(videodata, waveletLibrary, phase, device='cuda'):
     WT = []
-    l = torch.Tensor(waveletLibrary).cuda()
+    l = torch.Tensor(waveletLibrary).to(device)
     for i, frame in tqdm(enumerate(videodata), total=len(videodata), desc=f"Wavelet transform (phase={phase})"):
         wt = waveletTransform(frame, phase, l)
         torch.cuda.empty_cache()
@@ -172,9 +172,9 @@ def getWTfromNPY(videodata, waveletLibrary, phase):
 
 
 
-def getWTfromNPY3D(videodata, waveletLibrary, tp_w):
+def getWTfromNPY3D(videodata, waveletLibrary, tp_w, device='cuda'):
     WT = []
-    l = torch.Tensor(waveletLibrary).cuda()
+    l = torch.Tensor(waveletLibrary).to(device)
     for i in range(tp_w, videodata.shape[0]):
         print(i)
         wt = waveletTransform3D(videodata[i-tp_w:i], l)
@@ -329,7 +329,7 @@ def waveletDecomposition(videodata, phase, sigmas, folder_path, library_path='/m
     WT = []
     for s, ss in enumerate(sigmas):
         l = L[:, :, :, s]
-        wt = getWTfromNPY(videodata, l, phase)
+        wt = getWTfromNPY(videodata, l, phase, device='cuda:3')
         WT.append(wt)
     WT = np.array(WT)
     WT = np.moveaxis(WT, 0, 4)

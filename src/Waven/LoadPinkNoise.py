@@ -587,10 +587,28 @@ def align_datas_with_timestamps(spks, imaging_timestamps, stimulus_timestamps, N
     
     # Validate inputs
     if spks.shape[1] != len(imaging_timestamps):
-        raise ValueError(
-            f"Mismatch: spks has {spks.shape[1]} timepoints but "
-            f"imaging_timestamps has {len(imaging_timestamps)} timestamps"
-        )
+        #handle off-by-one mismatches
+        if spks.shape[1] - len(imaging_timestamps) == 1:
+            print(
+                f"Warning: 1 off mismatch between spks ({spks.shape[1]} timepoints) "
+                f"and imaging_timestamps ({len(imaging_timestamps)} timestamps). "
+                "Adding extra interpolated timestamp."
+            )
+            imaging_timestamps.append(imaging_timestamps[-1] + np.median(np.diff(imaging_timestamps)))
+        elif spks.shape[1] - len(imaging_timestamps) == -1:
+            print(
+                f"Warning: -1 off mismatch between spks ({spks.shape[1]} timepoints) "
+                f"and imaging_timestamps ({len(imaging_timestamps)} timestamps). "
+                "Removing last timestamp. "
+            )
+            imaging_timestamps = imaging_timestamps[:spks.shape[1]]
+
+        else:
+            #raise error for larger mismatches
+            raise ValueError(
+                f"Mismatch: spks has {spks.shape[1]} timepoints but "
+                f"imaging_timestamps has {len(imaging_timestamps)} timestamps"
+            )
     
     # Calculate number of trials based on stimulus frames
     n_trials = len(stimulus_timestamps) // Nb_frames

@@ -130,7 +130,7 @@ def orientation_correction_for_stretches(visual_coverage, nx, ny, omax):
     corrected_ori[np.asarray(corrected_ori<0).nonzero()[0]]=corrected_ori[corrected_ori<0]+180
     return corrected_ori
 
-def PearsonCorrelationPinkNoise(stim, resp, neuron_pos,  nx, ny, ns, visual_coverage, screen_ratio, sigmas, fil=[0], absolute=False,  plotting=False):
+def PearsonCorrelationPinkNoise(stim, resp, neuron_pos,  nx, ny, n_theta, ns, visual_coverage, screen_ratio, sigmas, fil=[0], absolute=False,  plotting=False):
     """
     Runs Pearson corrrlation between the wavelet decomposition and the neurons spikes
 
@@ -140,6 +140,7 @@ def PearsonCorrelationPinkNoise(stim, resp, neuron_pos,  nx, ny, ns, visual_cove
         neuron_pos (array_like):, neuron position shape(n_neurons, n_dim)
         nx: coarse nb of azimuth position (default 27)
         ny: coarse nb of elevation positon (default 11)
+        n_theta: number of orientations
         ns: coarse number of sizes
         analysis Coverage (list): [azimuth left, azimuth right, elevation top , elevation bottom] in visual degree.
         screen_ratio:  abs(visual_coverage[0]-visual_coverage[1])/nx
@@ -177,7 +178,7 @@ def PearsonCorrelationPinkNoise(stim, resp, neuron_pos,  nx, ny, ns, visual_cove
     rfs = rfs - (rfs >= 0.99).astype('float16')
     rfs = np.nan_to_num(rfs)
     print(rfs.shape)
-    rfs = rfs.reshape(rfs.shape[0], nx, ny, 8, ns)#9,3
+    rfs = rfs.reshape(rfs.shape[0], nx, ny, n_theta, ns)
     # rfs = rfs[:, :, :, :-1, :]
     # rfssum = rfs.sum(axis=4)
 
