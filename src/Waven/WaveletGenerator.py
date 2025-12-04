@@ -311,7 +311,7 @@ def downsample_video_uint(path, shape=(54, 135), chunk_size=1000):
     video_downsampled = np.concatenate(frames, axis=0)
     np.save(path[:-4]+'_downsampled.npy', video_downsampled)
 
-def waveletDecomposition(videodata, phase, sigmas, folder_path, library_path='/media/sophie/Expansion1/UCL/datatest/gabors_library.npy'):
+def waveletDecomposition(videodata, phase, sigmas, folder_path, library_path='/media/sophie/Expansion1/UCL/datatest/gabors_library.npy', device='cuda:0'):
     """
     Runs the wavelet decomposition
 
@@ -329,7 +329,7 @@ def waveletDecomposition(videodata, phase, sigmas, folder_path, library_path='/m
     WT = []
     for s, ss in enumerate(sigmas):
         l = L[:, :, :, s]
-        wt = getWTfromNPY(videodata, l, phase, device='cuda:3')
+        wt = getWTfromNPY(videodata, l, phase, device=device)
         WT.append(wt)
     WT = np.array(WT)
     WT = np.moveaxis(WT, 0, 4)

@@ -59,7 +59,11 @@ def main():
     movpath = param_defaults["Movie Path"]
     lib_path = param_defaults["Library Path"]
     n_theta = int(gabor_param["N_thetas"])
-    device = param_defaults["Device"]
+    #default device 
+    try:
+        device = param_defaults["Device"]
+    except KeyError:
+        device = "cuda:0"  # default to first CUDA device if not specified
 
     screen_ratio = abs(visual_coverage[0] - visual_coverage[1]) / nx
     xM, xm, yM, ym = analysis_coverage
@@ -160,8 +164,8 @@ def main():
                 videodata = np.load(downsampled_video_path)
                 print(f"Video data shape: {videodata.shape}")
                 
-                wg.waveletDecomposition(videodata, 0, sigmas, parent_dir, library_path=lib_path)
-                wg.waveletDecomposition(videodata, 1, sigmas, parent_dir, library_path=lib_path)
+                wg.waveletDecomposition(videodata, 0, sigmas, parent_dir, library_path=lib_path, device=device)
+                wg.waveletDecomposition(videodata, 1, sigmas, parent_dir, library_path=lib_path, device=device)
                 
                 w_r_downsampled, w_i_downsampled, w_c_downsampled = lpn.coarseWavelet(parent_dir, False, nx0, ny0, nx, ny,
                                                                                         n_theta, ns)
