@@ -59,7 +59,7 @@ def main():
     movpath = param_defaults["Movie Path"]
     lib_path = param_defaults["Library Path"]
     n_theta = int(gabor_param["N_thetas"])
-    #default device 
+    #set device
     try:
         device = param_defaults["Device"]
     except KeyError:
@@ -207,16 +207,25 @@ def main():
     # Compute receptive fields using Pearson correlation
     print("Computing receptive fields...")
     print(f"w_c_downsampled shape: {w_c_downsampled.shape}")
-    print(f"Expected: (27300, 27, 11, {n_theta}, {ns})")
+    print(f"Expected: ({nb_frames}, {nx}, {ny}, {n_theta}, {ns})")
 
     # Use the actual number of frames we have
     n_frames_to_use = min(w_c_downsampled.shape[0], spks.shape[1])
     print(f"Using {n_frames_to_use} frames for RF calculation")
 
-    rfs_gabor = au.PearsonCorrelationPinkNoise(w_c_downsampled[:n_frames_to_use].reshape(n_frames_to_use, -1), 
-                                            np.mean(spks[:, :n_frames_to_use], axis=0),
-                                            neuron_pos, nx, ny, ns, analysis_coverage, 
-                                            screen_ratio, sigmas_deg, plotting=True)
+    print(spks[:, :n_frames_to_use].shape)
+
+    rfs_gabor = au.PearsonCorrelationPinkNoise_batched( stim = w_c_downsampled[:n_frames_to_use].reshape(n_frames_to_use, -1), 
+                                                resp = spks[:, :n_frames_to_use],
+                                                neuron_pos= neuron_pos, 
+                                                nx = nx, 
+                                                ny = ny, 
+                                                n_theta = n_theta,
+                                                ns = ns, 
+                                                visual_coverage = analysis_coverage, 
+                                                screen_ratio = screen_ratio, 
+                                                sigmas = sigmas_deg
+                                                )
 
     # Plot retinotopy maps
     fig2, ax2 = plt.subplots(2, 2, figsize=(14, 12))
@@ -252,7 +261,7 @@ def main():
 
     # Save results
     print("Saving results...")
-    save_path = dirs + "/zebra/"
+    save_path = dirs[0] + "/zebra/"
     np.save(os.path.join(save_path, 'correlation_matrix.npy'), rfs_gabor[0])
     np.save(os.path.join(save_path, 'maxes_indices.npy'), rfs_gabor[1])
     np.save(os.path.join(save_path, 'maxes_corrected.npy'), rfs_gabor[2])
@@ -270,6 +279,10 @@ def main():
 
     save_path = dirs[0] + "/zebra/analysis_results.npy"
     np.save(save_path, results)
+
+    # free memory
+    del w_r_downsampled, w_i_downsampled, w_c_downsampled
+    gc.collect()
     
     return results
 

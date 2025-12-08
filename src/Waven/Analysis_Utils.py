@@ -276,6 +276,134 @@ def PearsonCorrelationPinkNoise(stim, resp, neuron_pos,  nx, ny, n_theta, ns, vi
     return rfs, maxe,maxe_corr, maxes
 
 
+def PearsonCorrelationPinkNoise_batched(stim, resp, neuron_pos, nx, ny, n_theta, ns, visual_coverage, screen_ratio, sigmas, fil=[0], absolute=False, plotting=False, batch_size=128):
+    """
+    Runs Pearson correlation in batches to manage GPU memory efficiently.
+    
+    This is a memory-efficient version that processes stimulus features in batches instead of all at once.
+    
+    Parameters:
+        stim (array-like): wavelet decomposition shape (n_timepoints, n_features).
+        resp (array-like): neural response shape (n_timepoints, n_neurons) - multiple response traces
+        neuron_pos (array_like): neuron position shape (n_neurons, n_dim)
+        nx: coarse nb of azimuth position (default 27)
+        ny: coarse nb of elevation position (default 11)
+        n_theta: number of orientations
+        ns: coarse number of sizes
+        visual_coverage (list): [azimuth left, azimuth right, elevation top , elevation bottom] in visual degree.
+        screen_ratio: abs(visual_coverage[0]-visual_coverage[1])/nx
+        sigmas (list): standard deviation of the gabor filters expressed in pixels
+        batch_size (int): Number of stimulus features to process per batch (default 128)
+    
+    Returns:
+        tuple : (receptive field matrix, best gabor params, best gabor with units, max values array)
+    """
+    # Convert inputs to torch if needed
+    stim_torch = torch.Tensor(stim) if not isinstance(stim, torch.Tensor) else stim
+    resp_torch = torch.Tensor(resp) if not isinstance(resp, torch.Tensor) else resp
+    
+    # Ensure resp is 2D (n_timepoints, n_neurons)
+    # Handle 3D case: (1, n_timepoints, n_neurons) -> squeeze first dim and transpose
+    if len(resp_torch.shape) == 3:
+        # Shape is (1, n_timepoints, n_neurons), squeeze to (n_timepoints, n_neurons)
+        resp_torch = resp_torch.squeeze(0)
+    elif len(resp_torch.shape) == 1:
+        # Shape is (n_timepoints,), add neuron dimension
+        raise ValueError("Response tensor must have shape (n_timepoints, n_neurons). Found 1D array.")
+    # If already 2D, use as is
+
+    n_timepoints = stim_torch.shape[0]
+    n_total_features = stim_torch.shape[1]
+    n_neurons = resp_torch.shape[1]
+    
+    # Initialize output array for all correlations: (n_neurons, n_total_features)
+    all_correlations = np.zeros((n_neurons, n_total_features))
+    
+    print(f"Processing {n_total_features} stimulus features in batches of {batch_size}")
+    print(f"Stimulus shape: {stim_torch.shape}, Response shape: {resp_torch.shape}")
+    print(f"Number of neurons: {n_neurons}")
+    
+    # Process in batches of features
+    for batch_start in range(0, n_total_features, batch_size):
+        batch_end = min(batch_start + batch_size, n_total_features)
+        batch_features = batch_end - batch_start
+        print(f"  Processing features {batch_start} to {batch_end}")
+        
+        # Extract batch stimulus features
+        stim_batch = stim_torch[:, batch_start:batch_end]  # Shape: (n_timepoints, batch_features)
+        
+        try:
+            # Build data for correlation: concatenate stimulus features (transposed) and response
+            # stim_batch shape: (n_timepoints, batch_features) -> transpose to (batch_features, n_timepoints)
+            # resp_torch shape: (n_timepoints, n_neurons) -> transpose to (n_neurons, n_timepoints)
+            stim_batch_t = stim_batch.permute(1, 0)  # (batch_features, n_timepoints)
+            resp_t = resp_torch.permute(1, 0)  # (n_neurons, n_timepoints)
+            data_batch = torch.cat((stim_batch_t, resp_t), dim=0)  # Shape: (batch_features + n_neurons, n_timepoints)
+            cc_batch = torch.corrcoef(data_batch.cuda())
+        except RuntimeError as e:
+            print(f"GPU error, clearing cache and retrying: {e}")
+            torch.cuda.empty_cache()
+            stim_batch_t = stim_batch.permute(1, 0)  # (batch_features, n_timepoints)
+            resp_t = resp_torch.permute(1, 0)  # (n_neurons, n_timepoints)
+            data_batch = torch.cat((stim_batch_t, resp_t), dim=0)
+            cc_batch = torch.corrcoef(data_batch.cuda())
+        
+        # Extract correlations: last n_neurons rows (responses) correlated with first batch_features columns (stimulus)
+        # cc_batch shape: (batch_features + n_neurons, batch_features + n_neurons)
+        # We want rows [batch_features:] (response rows) and columns [:batch_features] (stimulus columns)
+        corr_batch = cc_batch[batch_features:, :batch_features].detach().cpu().numpy()
+        
+        if absolute:
+            corr_batch = np.abs(corr_batch)
+        
+        # Store in output array: shape (n_neurons, batch_features)
+        all_correlations[:, batch_start:batch_end] = corr_batch
+        
+        # Clear GPU cache after each batch
+        torch.cuda.empty_cache()
+    
+    # Remove near-perfect correlations (artifacts)
+    all_correlations = all_correlations - (all_correlations >= 0.99).astype('float16')
+    all_correlations = np.nan_to_num(all_correlations)
+    
+    print(f"Correlations shape: {all_correlations.shape}")
+    
+    # Reshape to feature dimensions
+    rfs = all_correlations.reshape(n_neurons, nx, ny, n_theta, ns)
+    
+    # Find max indices for each neuron
+    indices = []
+    maxes = []
+    for i in range(n_neurons):
+        idx, m = max_by_index(i, abs(rfs))
+        indices.append([idx[0][0], idx[1][0], idx[2][0], idx[3][0]])
+        maxes.append(m)
+    
+    indices = np.array(indices)
+    maxes = np.array(maxes)
+    
+    print(f"Max indices shape: {indices.shape}, Maxes shape: {maxes.shape}")
+    
+    # Extract max coordinates
+    xmax = indices[:, 0]
+    ymax = indices[:, 1]
+    omax = indices[:, 2]
+    smax = indices[:, 3]
+    
+    maxe = [xmax, ymax, omax, smax]
+    
+    xM, xm, yM, ym = visual_coverage
+    omax_corr = orientation_correction_for_stretches(visual_coverage, nx, ny, omax * 22.5)
+    xmax_corr = (abs(xmax) * (abs(xm - xM) / nx)) + xM
+    ymax_corr = (abs(ymax - ny) * (abs(yM - ym) / ny)) + ym
+    print(sigmas)
+    smax_corr = sigmas[smax.astype(int)]
+    maxe_corr = [xmax_corr, ymax_corr, omax_corr, smax_corr]
+    
+    torch.cuda.empty_cache()
+    return rfs, maxe, maxe_corr, maxes
+
+
 def realign_Stim_mc(stim, syncEcho_flip_times, stim_times):
     idx = []
     for ts in syncEcho_flip_times:
