@@ -90,7 +90,7 @@ def main():
         spks, spks_n, neuron_pos = lpn.loadSPKMesoscope(dirs[0], pathsuite2p, block_end, n_planes, nb_frames,
                                                         threshold=1.25, last=True, method='frame2ttl')
         neuron_pos = lpn.correctNeuronPos(neuron_pos, resolution)
-        neuron_pos[:, 1] = abs(neuron_pos[:, 1] - np.max(neuron_pos[:, 1]))
+
     else:
         print(f'Loading spks file from {spks_path}')
         try:

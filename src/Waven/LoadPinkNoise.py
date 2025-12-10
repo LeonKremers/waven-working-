@@ -1291,13 +1291,20 @@ def correctNeuronPos(neuron_pos, resolution=1.3671):
     Returns:
         neuron_pos_corrected[int]: new positions
     """
-    ly = np.ceil(np.max(neuron_pos[:, 0]) / 3)
-    lx = np.ceil(np.max(neuron_pos[:, 1]))
-    n1 = neuron_pos[neuron_pos[:, 0] <= ly]
-    neuron_pos[np.logical_and(neuron_pos[:, 0] > ly, neuron_pos[:, 0] <= 2 * ly)] = neuron_pos[np.logical_and(
-        neuron_pos[:, 0] > ly, neuron_pos[:, 0] <= 2 * ly)] + np.array([-ly, lx])
-    neuron_pos[neuron_pos[:, 0] > 2 * ly] = neuron_pos[neuron_pos[:, 0] > 2 * ly] + np.array([-2 * ly, 2 * lx])
+    # ly = np.ceil(np.max(neuron_pos[:, 0]) / 3)
+    # lx = np.ceil(np.max(neuron_pos[:, 1]))
+    # n1 = neuron_pos[neuron_pos[:, 0] <= ly]
+    # neuron_pos[np.logical_and(neuron_pos[:, 0] > ly, neuron_pos[:, 0] <= 2 * ly)] = neuron_pos[np.logical_and(
+    #     neuron_pos[:, 0] > ly, neuron_pos[:, 0] <= 2 * ly)] + np.array([-ly, lx])
+    # neuron_pos[neuron_pos[:, 0] > 2 * ly] = neuron_pos[neuron_pos[:, 0] > 2 * ly] + np.array([-2 * ly, 2 * lx])
+
+    #switch x and y positons
+    neuron_pos[:, [0, 1]] = neuron_pos[:, [1, 0]]
+    # flip x axis 
+    neuron_pos[:, 1] = abs(neuron_pos[:, 1] - np.max(neuron_pos[:, 1]))
+    # scale to microns
     neuron_pos=resolution*neuron_pos
+    
     return neuron_pos
 
 def coarseWavelet(path, downsampling, nx0=135, ny0=54, nx=27, ny=11,no=8,ns=6, nf=1, chunk_size=1000):
