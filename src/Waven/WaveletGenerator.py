@@ -133,8 +133,8 @@ def makeFilterLibrary3D(xs, ys, thetas, sigmas, offsets, f, tp_w,  alpha1, alpha
 
 
 
-def waveletTransform(frame,phase, L):
-    output=L[:, :, :,phase]@torch.Tensor(frame.flatten()).cuda()
+def waveletTransform(frame, phase, L):
+    output=L[:, :, :, phase]@torch.Tensor(frame.flatten()).cuda()
     # output=torch.sum(output, axis=(0, 1))
     return output.detach().cpu().numpy()
 
@@ -142,6 +142,37 @@ def waveletTransform(frame,phase, L):
 def waveletTransform3D(frame, L):
     output=L@torch.Tensor(frame.flatten()).cuda()
     # output=torch.sum(output, axis=(0, 1))
+    return output.detach().cpu().numpy()
+
+
+def waveletTransform_batch(frames, phase, L_torch):
+    """
+    Vectorized wavelet transform for batch of frames.
+    
+    Parameters:
+        frames: numpy array of shape (batch_size, height*width) or (batch_size, height, width)
+        phase: phase index (0 or 1)
+        L_torch: wavelet library tensor on GPU, shape (H, W, n_wavelets, n_phases)
+    
+    Returns:
+        output: numpy array of shape (batch_size, n_wavelets)
+    """
+    # Ensure frames are flattened to (batch_size, H*W)
+    if frames.ndim == 3:
+        batch_size = frames.shape[0]
+        frames_flat = frames.reshape(batch_size, -1)
+    else:
+        frames_flat = frames
+    
+    # Convert to torch and process
+    frames_tensor = torch.Tensor(frames_flat).to(L_torch.device)
+    
+    # Extract wavelets for this phase: (H, W, n_wavelets, phase_idx) -> (H*W, n_wavelets)
+    L_phase = L_torch[:, :, :, phase].reshape(-1, L_torch.shape[2])
+    
+    # Vectorized matrix multiplication: (batch_size, H*W) @ (H*W, n_wavelets) -> (batch_size, n_wavelets)
+    output = frames_tensor @ L_phase
+    
     return output.detach().cpu().numpy()
 
 
@@ -168,6 +199,52 @@ def getWTfromNPY(videodata, waveletLibrary, phase, device='cuda'):
     # del l
     # gc.collect()
     return WT
+
+
+def getWTfromNPY_batched(videodata, waveletLibrary, phase, device='cuda', batch_size=32):
+    """
+    Optimized wavelet transform using batch processing on GPU.
+    
+    Processes multiple frames at once instead of frame-by-frame,
+    keeping the wavelet library in GPU memory throughout.
+    
+    Parameters:
+        videodata: numpy array of shape (n_frames, height, width)
+        waveletLibrary: numpy array of wavelet library (reshaped internally)
+        phase: phase index (0 or 1)
+        device: CUDA device
+        batch_size: number of frames to process at once (default 32)
+    
+    Returns:
+        WT: numpy array of shape (n_frames, n_wavelets)
+    """
+    n_frames = videodata.shape[0]
+    
+    # Transfer library to GPU once and keep it there
+    l_torch = torch.Tensor(waveletLibrary).to(device)
+    
+    WT = []
+    
+    # Process frames in batches
+    for batch_start in tqdm(range(0, n_frames, batch_size), desc=f"Wavelet transform batched (phase={phase})"):
+        batch_end = min(batch_start + batch_size, n_frames)
+        batch_frames = videodata[batch_start:batch_end]
+        
+        # Vectorized batch processing
+        batch_wt = waveletTransform_batch(batch_frames, phase, l_torch)
+        WT.append(batch_wt)
+    
+    # Concatenate all batches
+    WT = np.vstack(WT) if WT else np.array(WT)
+    
+    # Clean up GPU memory only after all batches are done
+    l_torch = l_torch.cpu()
+    torch.cuda.empty_cache()
+    del l_torch
+    gc.collect()
+    
+    return WT
+
 
 
 
@@ -334,4 +411,47 @@ def waveletDecomposition(videodata, phase, sigmas, folder_path, library_path='/m
     WT = np.array(WT)
     WT = np.moveaxis(WT, 0, 4)
     np.save(folder_path+'/dwt_videodata_'+str(phase)+'.npy', WT)
+
+
+def waveletDecomposition_batched(videodata, phases, sigmas, folder_path, library_path='/media/sophie/Expansion1/UCL/datatest/gabors_library.npy', device='cuda:0', batch_size=32):
+    """
+    Optimized wavelet decomposition using batch processing and combined phase computation.
+    
+    Processes multiple frames at once and computes both phases simultaneously for better GPU utilization.
+    
+    Parameters:
+        videodata (array like): downsampled stimulus movie (npy), shape (n_frames, height, width)
+        phases (list or int): phase indices to compute (e.g., [0, 1] for both phases, or single int)
+        sigmas (list): standard deviations of Gabor filters (sigma indices for library)
+        folder_path: Path where to save the decomposition
+        library_path: path to Gabor library
+        device: CUDA device
+        batch_size: number of frames to process at once (default 32)
+    
+    Returns:
+        saves the wavelet decomposition as 'dwt_videodata_0.npy' and/or 'dwt_videodata_1.npy' at folder_path
+    """
+    L = np.load(library_path)
+    
+    # Handle single phase or list of phases
+    if isinstance(phases, int):
+        phases = [phases]
+    
+    # Process each phase
+    for phase in phases:
+        WT = []
+        for s, ss in enumerate(sigmas):
+            l = L[:, :, :, s]
+            # Use batched version for better performance
+            wt = getWTfromNPY_batched(videodata, l, phase, device=device, batch_size=batch_size)
+            WT.append(wt)
+        
+        WT = np.array(WT)
+        WT = np.moveaxis(WT, 0, 4)
+        np.save(folder_path+'/dwt_videodata_'+str(phase)+'.npy', WT)
+        
+        # Clean up after each phase to free GPU memory
+        torch.cuda.empty_cache()
+        gc.collect()
+
 

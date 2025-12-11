@@ -41,7 +41,6 @@ import cv2
 from matplotlib.gridspec import GridSpec
 from matplotlib.ticker import FuncFormatter
 import matplotlib.ticker as ticker
-from tqdm import tqdm
 
 
 
@@ -325,7 +324,7 @@ def PearsonCorrelationPinkNoise_batched(stim, resp, neuron_pos, nx, ny, n_theta,
     print(f"Number of neurons: {n_neurons}")
     
     # Process in batches of features
-    for batch_start in tqdm(range(0, n_total_features, batch_size)):
+    for batch_start in range(0, n_total_features, batch_size):
         batch_end = min(batch_start + batch_size, n_total_features)
         batch_features = batch_end - batch_start
         print(f"  Processing features {batch_start} to {batch_end}")

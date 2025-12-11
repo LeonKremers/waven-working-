@@ -164,8 +164,8 @@ def main():
                 videodata = np.load(downsampled_video_path)
                 print(f"Video data shape: {videodata.shape}")
                 
-                wg.waveletDecomposition(videodata, 0, sigmas, parent_dir, library_path=lib_path, device=device)
-                wg.waveletDecomposition(videodata, 1, sigmas, parent_dir, library_path=lib_path, device=device)
+                # Use optimized batched version for faster wavelet decomposition
+                wg.waveletDecomposition_batched(videodata, [0, 1], sigmas, parent_dir, library_path=lib_path, device=device, batch_size=32)
                 
                 w_r_downsampled, w_i_downsampled, w_c_downsampled = lpn.coarseWavelet(parent_dir, False, nx0, ny0, nx, ny,
                                                                                         n_theta, ns)
@@ -195,8 +195,8 @@ def main():
                 videodata = np.load(movpath[:-4] + '_downsampled.npy')
                 print(f"Downsampled video shape: {videodata.shape}")
                 
-                wg.waveletDecomposition(videodata, 0, sigmas, parent_dir, library_path=lib_path)
-                wg.waveletDecomposition(videodata, 1, sigmas, parent_dir, library_path=lib_path)
+                # Use optimized batched version for faster wavelet decomposition
+                wg.waveletDecomposition_batched(videodata, [0, 1], sigmas, parent_dir, library_path=lib_path, batch_size=32)
                 
                 w_r_downsampled, w_i_downsampled, w_c_downsampled = lpn.coarseWavelet(parent_dir, False, nx0, ny0, nx, ny,
                                                                                         n_theta, ns)
