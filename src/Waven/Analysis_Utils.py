@@ -200,7 +200,8 @@ def PearsonCorrelationPinkNoise(stim, resp, neuron_pos,  nx, ny, n_theta, ns, vi
     xM, xm,yM, ym=visual_coverage
     omax_corr=orientation_correction_for_stretches(visual_coverage, nx, ny, omax*22.5)
     xmax_corr=(abs(xmax)*(abs(xm-xM)/nx))+xM
-    ymax_corr = (abs(ymax-ny) * (abs(yM - ym) / ny)) + ym
+    #ymax_corr = (abs(ymax-ny) * (abs(yM - ym) / ny)) + ym
+    ymax_corr = (ymax * (abs(yM - ym) / ny)) + ym
     print(sigmas)
     smax_corr=sigmas[smax.astype(int)]
     maxe_corr=[xmax_corr, ymax_corr, omax_corr, smax_corr]
@@ -395,7 +396,8 @@ def PearsonCorrelationPinkNoise_batched(stim, resp, neuron_pos, nx, ny, n_theta,
     xM, xm, yM, ym = visual_coverage
     omax_corr = orientation_correction_for_stretches(visual_coverage, nx, ny, omax * 22.5)
     xmax_corr = (abs(xmax) * (abs(xm - xM) / nx)) + xM
-    ymax_corr = (abs(ymax - ny) * (abs(yM - ym) / ny)) + ym
+    #ymax_corr = (abs(ymax - ny) * (abs(yM - ym) / ny)) + ym
+    ymax_corr = (ymax * (abs(yM - ym) / ny)) + ym
     print(sigmas)
     smax_corr = sigmas[smax.astype(int)]
     maxe_corr = [xmax_corr, ymax_corr, omax_corr, smax_corr]
